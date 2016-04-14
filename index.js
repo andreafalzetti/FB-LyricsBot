@@ -1,18 +1,19 @@
 'use strict';
 
 var config = require('./config');
-var FacebookMessenger = require('fb-messenger')
-var messenger = new FacebookMessenger(config.facebook.PAGE_ACCESS_TOKEN);
-const bodyParser = require('body-parser');
-const express = require('express');
-const request = require('request');
+var bodyParser = require('body-parser');
+var express = require('express');
+var request = require('request');
 var colors = require('colors');
+var wit = require('node-wit');
+var FacebookMessenger = require('fb-messenger');
+var messenger = new FacebookMessenger(config.facebook.PAGE_ACCESS_TOKEN);
 
 // Webserver parameter
 const PORT = process.env.PORT || config.app.port;
 
 // Wit.ai parameters
-//const WIT_TOKEN = process.env.WIT_TOKEN;
+const WIT_TOKEN = process.env.WIT_TOKEN || config.wit.TOKEN;
 
 // Messenger API parameters
 const FB_PAGE_ID = process.env.FB_PAGE_ID && Number(process.env.FB_PAGE_ID) || Number(config.facebook.PAGE_ID);
@@ -76,8 +77,6 @@ const getFirstMessagingEntry = (body) => {
   ;
   return val || null;
 };
-
-// Wit.ai bot specific code
 
 // This will contain all user sessions.
 // Each session has an entry:
@@ -154,8 +153,7 @@ app.get('/fb', (req, res) => {
 
 // Message handler
 app.post('/fb', (req, res) => {
-    //console.log("POST REQUEST!");
-    //console.log(req);
+
   // Parsing the Messenger API response
   const messaging = getFirstMessagingEntry(req.body);
   if (messaging && messaging.message && messaging.recipient.id === FB_PAGE_ID) {
@@ -183,41 +181,43 @@ app.post('/fb', (req, res) => {
     } else if (msg) {
       // We received a text message
         console.log("<" + colors.white(sender) + ">: " + colors.white.bold(msg));
+
+        messenger.sendTextMessage(sender, 'Hola', function (err, body) {
+          if (err) {
+            console.error(colors.red.bold(err));
+            return
+          }
+          console.log(body)
+        })  
         
-messenger.sendTextMessage(sender, 'Hola', function (err, body) {
-  if (err) {
-    console.error(colors.red.bold(err));
-    return
-  }
-  console.log(body)
-})        
-        
-//      // Let's forward the message to the Wit.ai Bot Engine
-//      // This will run all actions until our bot has nothing left to do
-//      wit.runActions(
-//        sessionId, // the user's current session
-//        msg, // the user's message 
-//        sessions[sessionId].context, // the user's current session state
-//        (error, context) => {
-//          if (error) {
-//            console.log('Oops! Got an error from Wit:', error);
-//          } else {
-//            // Our bot did everything it has to do.
-//            // Now it's waiting for further messages to proceed.
-//            console.log('Waiting for futher messages.');
-//
-//            // Based on the session state, you might want to reset the session.
-//            // This depends heavily on the business logic of your bot.
-//            // Example:
-//            // if (context['done']) {
-//            //   delete sessions[sessionId];
-//            // }
-//
-//            // Updating the user's current session state
-//            sessions[sessionId].context = context;
-//          }
-//        }
-//      );
+        // Let's forward the message to the Wit.ai Bot Engine
+      // This will run all actions until our bot has nothing left to do
+      wit.runActions(
+        sessionId, // the user's current session
+        msg, // the user's message 
+        sessions[sessionId].context, // the user's current session state
+        (error, context) => {
+          if (error) {
+            console.log('Oops! Got an error from Wit:', error);
+          } else {
+            // Our bot did everything it has to do.
+            // Now it's waiting for further messages to proceed.
+            console.log('Waiting for futher messages.');
+
+            // Based on the session state, you might want to reset the session.
+            // This depends heavily on the business logic of your bot.
+            // Example:
+            // if (context['done']) {
+            //   delete sessions[sessionId];
+            // }
+
+            // Updating the user's current session state
+            sessions[sessionId].context = context;
+          }
+        }
+      );
+
+
     }
   }
   res.sendStatus(200);
