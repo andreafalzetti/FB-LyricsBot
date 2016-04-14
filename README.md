@@ -8,4 +8,6 @@ Rename `config.sample.js` to `config.js` and enter your API Keys.
 
 ------
 
-Copyright Andrea Falzetti http://falzetti.me
+MIT License
+
+Copyright (c) 2016 [Andrea Falzetti](http://falzetti.me)
