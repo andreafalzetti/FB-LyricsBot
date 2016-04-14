@@ -1,4 +1,4 @@
-# FB Messenger ChatBox in Node.js
+# FB Messenger ChatBot in Node.js
 
 Use this as example to build your ChatBots.
 
