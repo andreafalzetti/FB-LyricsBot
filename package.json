@@ -13,6 +13,7 @@
     "colors": "^1.1.2",
     "express": "^4.13.4",
     "fb-messenger": "^0.1.0",
+    "musicmatch": "^0.2.5",
     "node-wit": "^3.0.1",
     "request": "^2.71.0"
   }

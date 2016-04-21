@@ -6,6 +6,11 @@ Use this as example to build your ChatBots.
 
 Rename `config.sample.js` to `config.js` and enter your API Keys.
 
+## Run
+
+./ngrok http 8445
+
+
 ------
 
 MIT License
