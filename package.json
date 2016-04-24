@@ -1,9 +1,10 @@
 {
-  "name": "chatbot",
-  "version": "1.0.0",
-  "description": "FB ChatBot client in Node.js",
+  "name": "FB-LyricsBot",
+  "version": "0.0.1",
+  "description": "Facebook Messenger LyricsBot",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Andrea Falzetti <afalzetti@gmail.com> (http://falzetti.me/)",

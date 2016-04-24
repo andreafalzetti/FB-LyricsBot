@@ -33,6 +33,39 @@ app.set('port', PORT);
 app.listen(app.get('port'));
 app.use(bodyParser.json());
 
+// Subscribe to Facebook Webhook
+function fb_subscribe() {    
+    // Set the headers
+    var headers = {
+        'User-Agent':       'LyricsBot/0.0.1',
+        'Content-Type':     'application/x-www-form-urlencoded'
+    }
+
+    // Configure the request
+    var options = {
+        url: 'https://graph.facebook.com/v2.6/me/subscribed_apps?access_token=' + config.facebook.PAGE_ACCESS_TOKEN,
+        method: 'POST',
+        headers: headers
+    }
+    
+    console.log("Subscribing Facebook Messenger Webhook: ".white.bold + options.url);
+    
+    // Start the request
+    request(options, function (error, response, body) {
+        body = JSON.parse(body);
+        //console.log(body);
+        if (!error && response.statusCode == 200) {
+            if(typeof body.success !== "undefined" && body.success === true) {
+                console.log("Connection with Facebook successful".white.bold);
+            }
+        } else {                        
+            console.log("Error Type: ".red.bold + body.error.type + " ["+ body.error.code +"]");
+            console.log("Error Message: ".red.bold + body.error.message);        
+            throw new Error("Error Connecting to Facebook");
+        }
+    })
+}
+fb_subscribe();
 
 // See the Send API reference
 // https://developers.facebook.com/docs/messenger-platform/send-api-reference
@@ -162,6 +195,23 @@ app.get('/fb', (req, res) => {
   }
 });
 
+function sendMessagesRecursively(sender, messages, index) {
+    if(index < messages.length) {
+        messenger.sendTextMessage(sender, messages[index], function (err, body) {
+          if (err) {
+            console.error(colors.red.bold("Error::sendMessagesRecursively"));
+            console.error(err);
+            return
+          } else {
+              console.log(colors.white.bold("Message ["+index+"/"+(messages.length-1)+"] Sent Successfully"));
+              console.log(messages[index]);              
+              index++;
+              sendMessagesRecursively(sender, messages, index);              
+          }          
+        });        
+    } 
+}
+
 // Message handler
 app.post('/fb', (req, res) => {
 
@@ -192,10 +242,31 @@ app.post('/fb', (req, res) => {
                     console.log(colors.white(lyrics));
                 
                     var lyrics_split = lyrics.match(/.{1,320}/g);
-                console.log(lyrics_split);
-                    lyrics_split.forEach(function(lyric_segment){
+                    var lyrics_packages = new Array();
+                    var _tmpCount = 0;
+                    var _msg = "";
+                    for(var i=0; i<lyrics_split.length; i++) {
+                        _tmpCount += lyrics_split[i].length;
+                        if((_tmpCount+lyrics_split[i].length) <= 320) {
+                           _msg += lyrics_split[i] + "\n";
+                        } else {
+                           //_msg += "\n";
+                           lyrics_packages.push(_msg); 
+//                           _msg = "";
+                           _msg = lyrics_split[i] + "\n";
+                           _tmpCount = _msg.length;
+                        }
+                    }
+                    if(_msg !== "") {
+                        lyrics_packages.push(_msg);
+                    }
+                    console.log(lyrics_packages);
+                    console.log(colors.white.bold("Lyrics has been splitted in " + lyrics_packages.length + " messages"));
+                    //console.log(lyrics_split);
+                    sendMessagesRecursively(sender, lyrics_packages, 0);
+                    /*lyrics_packages.forEach(function(lyric_package){
                                          
-                        messenger.sendTextMessage(sender, lyric_segment, function (err, body) {
+                        messenger.sendTextMessage(sender, lyric_package, function (err, body) {
                           if (err) {
                             console.error(colors.red.bold("Error"));
                             console.error(err);
@@ -203,7 +274,7 @@ app.post('/fb', (req, res) => {
                           }
                           console.log(body);
                         });
-                    });
+                    });*/
             }).catch(function(err){
                     console.log(err);
             })
@@ -217,10 +288,12 @@ app.post('/fb', (req, res) => {
     // We retrieve the message content
     const msg = messaging.message.text;
     const atts = messaging.message.attachments;
-      
-    if (atts) {
-      // We received an attachment
 
+    if (atts) {
+        // We received an attachment
+        console.log(colors.magenta("Attachment Received ["+atts[0].type+"]"));
+        console.log(atts[0].payload);
+        
       // Let's reply with an automatic message
       fbMessage(
         sender,
@@ -228,16 +301,25 @@ app.post('/fb', (req, res) => {
       );
     } else if (msg) {
       // We received a text message
-        console.log("<" + colors.white(sender) + ">: " + colors.white.bold(msg));
+        console.log("<" + colors.white(sender) + ">: " + colors.white.bold(msg));        
         
-        
-        
-        music.trackSearch({q:msg, page:1, page_size:3})
+        music.trackSearch({q:msg, page:1, page_size:10})
         .then(function(data){
                 
                 console.log("Found " + colors.white(data.message.body.track_list.length).bold + " lyrics");
                 //console.log(data.message.body.track_list);
-                if(data.message.body.track_list.length > 1) {
+                if(data.message.body.track_list.length === 0) {
+                    messenger.sendTextMessage(sender, "Sorry but I couldn't find any lyric.", function (err, body) {
+                      if (err) {
+                        console.error(colors.red.bold("Error"));
+                        console.error(err);
+                        return
+                      } else {
+                          console.log(colors.white.bold("Message [Lyric Not Found] Sent Successfully"));
+                      }
+                    })                    
+                }
+                else if(data.message.body.track_list.length > 1) {
                     
                     
 //                    var buttons = [{
@@ -260,18 +342,19 @@ app.post('/fb', (req, res) => {
                     var tracks  = new Array();
                     data.message.body.track_list.forEach(function(data) {
                        var track = data.track;
-                       var cover = "";
-                       console.log(colors.red(track.album_coverart_800x800));
-                       if(typeof track.album_coverart_800x800 !== "undefined" || track.album_coverart_800x800 !== "") {
+                       var cover = "http://s.mxmcdn.net/images/albums/nocover.png";
+                    
+                       if(typeof track.album_coverart_800x800 !== "undefined" && track.album_coverart_800x800 !== "") {
                            cover = track.album_coverart_800x800;
+                       } else if(typeof track.album_coverart_500x500 !== "undefined" && track.album_coverart_500x500 !== "") {
+                           cover = track.album_coverart_500x500;
+                       } else if(typeof track.album_coverart_350x350 !== "undefined" && track.album_coverart_350x350 !== "") {
+                           cover = track.album_coverart_350x350;
+                       } else if(typeof track.album_coverart_100x100 !== "undefined" && track.album_coverart_100x100 !== "") {
+                           cover = track.album_coverart_100x100;
                        }
                         
                        var _t = {
-                                    //id: track.track_id,
-                                    //track_name: track.track_name,
-                                    //album_name: track.album_name,
-                                    //artist_name: track.artist_name,
-                           
                                     "title": track.track_name + " - " + track.artist_name,
                                     "image_url": cover,
                                     "subtitle": track.album_name,
