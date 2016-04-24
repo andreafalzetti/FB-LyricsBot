@@ -1,6 +1,23 @@
 'use strict';
 
-var config = require('./config');
+// Configuration
+
+try {
+    var config = require('./config');
+} catch(e) {
+    var config = {};
+
+    // General Settings
+    config.app = {};
+    config.app.port = process.env.APP_PORT;
+
+    // Facebook Messenger
+    config.facebook = {};
+    config.facebook.PAGE_ID = process.env.PAGE_ID;
+    config.facebook.FB_VERIFY_TOKEN = process.env.FB_VERIFY_TOKEN;
+    config.facebook.PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
+}
+
 var bodyParser = require('body-parser');
 var express = require('express');
 var request = require('request');
