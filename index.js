@@ -212,6 +212,12 @@ app.get('/fb', (req, res) => {
   }
 });
 
+// Webhook setup
+app.get('/ping', (req, res) => {
+    res.sendStatus(200);
+    res.send("pong");
+});
+
 function sendMessagesRecursively(sender, messages, index) {
     if(index < messages.length) {
         messenger.sendTextMessage(sender, messages[index], function (err, body) {
